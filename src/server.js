@@ -1,4 +1,4 @@
-//# Lancement du serveur
+// Lancement du serveur
 
 const express = require("express");
 const app = express();

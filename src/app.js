@@ -1,1 +1,1 @@
-//# Point d'entrée de l'application Express
+// Point d'entrée de l'application Express
