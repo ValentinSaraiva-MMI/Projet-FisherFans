@@ -1,0 +1,522 @@
+openapi: 3.1.0
+info:
+  title: FisherFans API
+  version: 1.0.0
+  description: >
+    API REST (locale) pour la gestion des utilisateurs, bateaux, sorties de pêche,
+    réservations et carnet de pêche. Réponses JSON uniquement. Spécification OAS v3.1.
+  contact:
+    name: Équipe projet
+    email: contact@fisherfans.local
+servers:
+  - url: https://localhost:8000/api/v1
+    description: Environnement local (HTTPS requis)
+tags:
+  - name: auth
+    description: Authentification & tokens
+  - name: utilisateurs
+  - name: bateaux
+  - name: sorties
+  - name: reservations
+  - name: carnet
+paths:
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Connexion et émission d'un JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        "200":
+          description: Token émis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginOutput'
+        "401":
+          description: Identifiants invalides
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /utilisateurs:
+    get:
+      tags: [utilisateurs]
+      summary: Lister les utilisateurs
+      parameters:
+        - $ref: '#/components/parameters/q'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        "200":
+          description: Liste paginée d'utilisateurs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Utilisateur' }
+    post:
+      tags: [utilisateurs]
+      summary: Créer un utilisateur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UtilisateurCreate' }
+      responses:
+        "201":
+          description: Créé
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Utilisateur' }
+        "400":
+          description: Données invalides
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /utilisateurs/{id}:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      tags: [utilisateurs]
+      summary: Détail utilisateur
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Utilisateur' }}}}
+        "404": { description: Introuvable, content: { application/json: { schema: { $ref: '#/components/schemas/Error' }}}}
+    patch:
+      tags: [utilisateurs]
+      summary: Modifier un utilisateur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UtilisateurUpdate' }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Utilisateur' }}}}
+    delete:
+      tags: [utilisateurs]
+      summary: Supprimer (BN6 RGPD → anonymisation)
+      responses:
+        "204": { description: Supprimé }
+        "404": { description: Introuvable, content: { application/json: { schema: { $ref: '#/components/schemas/Error' }}}}
+
+  /bateaux:
+    get:
+      tags: [bateaux]
+      summary: Lister les bateaux
+      parameters:
+        - $ref: '#/components/parameters/proprietaireId'
+        - $ref: '#/components/parameters/bbox'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Bateau' }
+    post:
+      security: [{ bearerAuth: [] }]
+      tags: [bateaux]
+      summary: Créer un bateau (BF27)
+      description: "Refus si l'utilisateur n'a pas de numéro de permis bateau."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BateauCreate' }
+      responses:
+        "201": { description: Créé, content: { application/json: { schema: { $ref: '#/components/schemas/Bateau' }}}}
+        "403": { description: Interdit (BF27), content: { application/json: { schema: { $ref: '#/components/schemas/Error' }}}}
+
+  /bateaux/{id}:
+    parameters: [ { $ref: '#/components/parameters/id' } ]
+    get:
+      tags: [bateaux]
+      summary: Détail bateau
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Bateau' }}}}
+        "404": { description: Introuvable, content: { application/json: { schema: { $ref: '#/components/schemas/Error' }}}}
+    patch:
+      security: [{ bearerAuth: [] }]
+      tags: [bateaux]
+      summary: Modifier un bateau
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BateauUpdate' }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Bateau' }}}}
+    delete:
+      security: [{ bearerAuth: [] }]
+      tags: [bateaux]
+      summary: Supprimer un bateau
+      responses:
+        "204": { description: Supprimé }
+
+  /sorties:
+    get:
+      tags: [sorties]
+      summary: Lister les sorties
+      parameters:
+        - $ref: '#/components/parameters/dateFrom'
+        - $ref: '#/components/parameters/dateTo'
+        - $ref: '#/components/parameters/bateauId'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Sortie' }
+    post:
+      security: [{ bearerAuth: [] }]
+      tags: [sorties]
+      summary: Créer une sortie (BF26)
+      description: "Refus si l'organisateur ne possède aucun bateau."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SortieCreate' }
+      responses:
+        "201": { description: Créé, content: { application/json: { schema: { $ref: '#/components/schemas/Sortie' }}}}
+        "403": { description: Interdit (BF26), content: { application/json: { schema: { $ref: '#/components/schemas/Error' }}}}
+
+  /sorties/{id}:
+    parameters: [ { $ref: '#/components/parameters/id' } ]
+    get:
+      tags: [sorties]
+      summary: Détail sortie
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Sortie' }}}}
+        "404": { description: Introuvable, content: { application/json: { schema: { $ref: '#/components/schemas/Error' }}}}
+    patch:
+      security: [{ bearerAuth: [] }]
+      tags: [sorties]
+      summary: Modifier une sortie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SortieUpdate' }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Sortie' }}}}
+    delete:
+      security: [{ bearerAuth: [] }]
+      tags: [sorties]
+      summary: Supprimer une sortie
+      responses:
+        "204": { description: Supprimé }
+
+  /reservations:
+    get:
+      security: [{ bearerAuth: [] }]
+      tags: [reservations]
+      summary: Lister les réservations
+      parameters:
+        - $ref: '#/components/parameters/utilisateurId'
+        - $ref: '#/components/parameters/sortieId'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Reservation' }
+    post:
+      security: [{ bearerAuth: [] }]
+      tags: [reservations]
+      summary: Réserver une sortie (unicité + capacité)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReservationCreate' }
+      responses:
+        "201": { description: Créé, content: { application/json: { schema: { $ref: '#/components/schemas/Reservation' }}}}
+        "409": { description: Conflit (déjà réservé / plus de places), content: { application/json: { schema: { $ref: '#/components/schemas/Error' }}}}
+
+  /reservations/{id}:
+    parameters: [ { $ref: '#/components/parameters/id' } ]
+    get:
+      security: [{ bearerAuth: [] }]
+      tags: [reservations]
+      summary: Détail réservation
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Reservation' }}}}
+        "404": { description: Introuvable, content: { application/json: { schema: { $ref: '#/components/schemas/Error' }}}}
+    delete:
+      security: [{ bearerAuth: [] }]
+      tags: [reservations]
+      summary: Annuler une réservation
+      responses:
+        "204": { description: Supprimé }
+
+  /carnet:
+    get:
+      security: [{ bearerAuth: [] }]
+      tags: [carnet]
+      summary: Lister les entrées de carnet (captures)
+      parameters:
+        - $ref: '#/components/parameters/utilisateurId'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Carnet' }
+    post:
+      security: [{ bearerAuth: [] }]
+      tags: [carnet]
+      summary: Ajouter une entrée au carnet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CarnetCreate' }
+      responses:
+        "201": { description: Créé, content: { application/json: { schema: { $ref: '#/components/schemas/Carnet' }}}}
+
+  /carnet/{id}:
+    parameters: [ { $ref: '#/components/parameters/id' } ]
+    get:
+      security: [{ bearerAuth: [] }]
+      tags: [carnet]
+      summary: Détail d'une entrée de carnet
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Carnet' }}}}
+        "404": { description: Introuvable, content: { application/json: { schema: { $ref: '#/components/schemas/Error' }}}}
+    delete:
+      security: [{ bearerAuth: [] }]
+      tags: [carnet]
+      summary: Supprimer une entrée de carnet
+      responses:
+        "204": { description: Supprimé }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    id:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer }
+      description: Identifiant de ressource
+    limit:
+      in: query
+      name: limit
+      schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
+    offset:
+      in: query
+      name: offset
+      schema: { type: integer, minimum: 0, default: 0 }
+    q:
+      in: query
+      name: q
+      schema: { type: string }
+      description: Terme de recherche libre
+    proprietaireId:
+      in: query
+      name: proprietaireId
+      schema: { type: integer }
+    utilisateurId:
+      in: query
+      name: utilisateurId
+      schema: { type: integer }
+    sortieId:
+      in: query
+      name: sortieId
+      schema: { type: integer }
+    bateauId:
+      in: query
+      name: bateauId
+      schema: { type: integer }
+    dateFrom:
+      in: query
+      name: dateFrom
+      schema: { type: string, format: date }
+    dateTo:
+      in: query
+      name: dateTo
+      schema: { type: string, format: date }
+    bbox:
+      in: query
+      name: bbox
+      description: Bounding box "minLon,minLat,maxLon,maxLat" (BF24)
+      schema: { type: string, pattern: '^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$' }
+
+  schemas:
+    # --- erreurs ---
+    Error:
+      type: object
+      properties:
+        code: { type: string, example: ERR_RULE }
+        message: { type: string }
+      required: [message]
+
+    # --- auth ---
+    LoginInput:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+      required: [email, password]
+    LoginOutput:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, example: Bearer }
+      required: [access_token, token_type]
+
+    # --- utilisateur ---
+    Utilisateur:
+      type: object
+      properties:
+        id: { type: integer }
+        nom: { type: string }
+        prenom: { type: string }
+        date_naissance: { type: string, format: date }
+        mail: { type: string, format: email }
+        telephone: { type: string }
+        adresse: { type: string }
+        code_postal: { type: integer }
+        langues_parlees: { type: string }
+        url_photo: { type: string }
+        numero_permis_bateau: { type: integer, nullable: true }
+        statut: { type: string }
+        nom_societe: { type: string, nullable: true }
+        num_siret: { type: string, nullable: true }
+        num_rc: { type: integer, nullable: true }
+      required: [id, nom, prenom, mail]
+    UtilisateurCreate:
+      allOf:
+        - $ref: '#/components/schemas/Utilisateur'
+      required: [nom, prenom, mail]
+    UtilisateurUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        nom: { type: string }
+        prenom: { type: string }
+        url_photo: { type: string }
+        numero_permis_bateau: { type: integer, nullable: true }
+
+    # --- bateau ---
+    Bateau:
+      type: object
+      properties:
+        id: { type: integer }
+        nom: { type: string }
+        description: { type: string }
+        marque: { type: string }
+        annee_fabrication: { type: integer }
+        url_photo_bateau: { type: string }
+        type_permis_requis: { type: string }
+        equipements: { type: string }
+        montant_caution: { type: integer }
+        capacite_max: { type: integer }
+        nb_couchages: { type: integer }
+        port_attache: { type: string }
+        latitude_port_attache: { type: number }
+        longitude_port_attache: { type: number }
+        type_motorisation: { type: string }
+        puissance_moteur: { type: integer }
+        proprietaire_id: { type: integer }
+      required: [id, nom, proprietaire_id]
+    BateauCreate:
+      allOf:
+        - $ref: '#/components/schemas/Bateau'
+      required: [nom]
+    BateauUpdate:
+      type: object
+      properties:
+        nom: { type: string }
+        description: { type: string }
+        capacite_max: { type: integer, minimum: 0 }
+
+    # --- sortie ---
+    Sortie:
+      type: object
+      properties:
+        id: { type: integer }
+        titre: { type: string }
+        infos_pratiques: { type: string }
+        type_sortie: { type: string }
+        type_tarif: { type: string }
+        date_debut: { type: string, format: date }
+        date_fin: { type: string, format: date }
+        heure_depart: { type: string, format: time }
+        heure_fin: { type: string, format: time }
+        nb_passagers: { type: integer, minimum: 1 }
+        prix_sortie: { type: integer, minimum: 0 }
+        bateau_id: { type: integer }
+        organisateur_id: { type: integer }
+      required: [id, titre, nb_passagers, bateau_id, organisateur_id]
+    SortieCreate:
+      allOf:
+        - $ref: '#/components/schemas/Sortie'
+      required: [titre, nb_passagers, bateau_id]
+    SortieUpdate:
+      type: object
+      properties:
+        titre: { type: string }
+        nb_passagers: { type: integer, minimum: 1 }
+        prix_sortie: { type: integer, minimum: 0 }
+
+    # --- reservation ---
+    Reservation:
+      type: object
+      properties:
+        id: { type: integer }
+        date_retendue: { type: string, format: date }
+        nb_places_reserve: { type: integer, minimum: 1 }
+        prix_total_reservation: { type: integer, minimum: 0 }
+        utilisateur_id: { type: integer }
+        sortie_peche_id: { type: integer }
+      required: [id, date_retendue, nb_places_reserve, utilisateur_id, sortie_peche_id]
+    ReservationCreate:
+      allOf:
+        - $ref: '#/components/schemas/Reservation'
+      required: [date_retendue, nb_places_reserve, sortie_peche_id]
+
+    # --- carnet de pêche ---
+    Carnet:
+      type: object
+      properties:
+        id: { type: integer }
+        nom_poisson: { type: string }
+        url_photo_poisson: { type: string }
+        commentaire: { type: string }
+        taille: { type: integer, minimum: 0 }
+        poids: { type: integer, minimum: 0 }
+        lieu_peche: { type: string }
+        date_peche: { type: string, format: date }
+        poisson_relache: { type: boolean }
+        utilisateur_id: { type: integer }
+      required: [id, utilisateur_id]
+security:
+  - bearerAuth: []
