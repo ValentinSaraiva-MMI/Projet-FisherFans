@@ -1,13 +1,30 @@
-// models (type) des utilisateurs
 const db = require("../config/db");
 
-// Récupérer tous les utilisateurs
-exports.getAll = (callback) => {
-  const sql = `SELECT id, nom, prenom, email, statut FROM users`;
-  db.all(sql, [], (err, rows) => {
-    if (err) {
-      return callback(err, null);
-    }
-    return callback(null, rows);
+// Helpers Promises
+const dbGet = (sql, params = []) =>
+  new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
   });
+
+const dbAll = (sql, params = []) =>
+  new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+  });
+
+// API
+exports.getAll = async () => {
+  return dbAll(
+    `SELECT id, nom, prenom, email AS mail, statut
+     FROM users
+     ORDER BY id DESC`
+  );
+};
+
+exports.getAuthByEmail = async (email) => {
+  return dbGet(
+    `SELECT id, nom, prenom, email, password, statut
+     FROM users
+     WHERE email = ?`,
+    [email]
+  );
 };

@@ -1,12 +1,15 @@
-// Point d'entrée de l'application Express
 const express = require("express");
-const app = express();
-const userRoutes = require("./routes/v1/users.route");
+const cors = require("cors");
 
-// Middleware pour parser le JSON (utile pour les futurs POST)
+const app = express();
+
+app.use(cors());
 app.use(express.json());
 
-// Montage des routes avec versioning (BN1)
-app.use("/api/v1/users", userRoutes);
+app.use("/api/v1", require("./routes/v1"));
+
+app.use((req, res) => {
+  res.status(404).json({ code: "ERR_404", message: "Route introuvable" });
+});
 
 module.exports = app;
