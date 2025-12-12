@@ -1,13 +1,10 @@
-// Lancement du serveur
+require("dotenv").config({ path: ".env" });
 
-const express = require("express");
-const app = express();
-const port = 3000;
+const app = require("./app");
+const config = require("./config/config");
+const PORT = process.env.PORT;
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Serveur Fisher Fans démarré sur le port ${PORT}`);
+  console.log(`Test l'API ici : http://localhost:${PORT}/api/v1/users`);
 });
