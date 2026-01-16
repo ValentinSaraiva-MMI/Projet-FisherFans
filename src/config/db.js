@@ -29,6 +29,11 @@ function initDb() {
     )
   `;
 
+  const createBoatsTable = `
+    CREATE TABLE IF NOT EXISTS boats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ;`;
+
   db.run(createUsersTable, (err) => {
     if (err) {
       console.error("❌ Erreur création table users :", err.message);
