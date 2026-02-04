@@ -20,6 +20,7 @@ const run = (sql, params = []) =>
     })
   );
 
+  
 const all = (sql, params = []) =>
   new Promise((resolve, reject) =>
     db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)))
@@ -109,6 +110,51 @@ async function initDb() {
       FOREIGN KEY(organisateur_id) REFERENCES users(id)
     )
   `);
+
+    // CARNETS
+  await run(`
+    CREATE TABLE IF NOT EXISTS carnets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nom_poisson TEXT,
+      url_photo_poisson TEXT,
+      commentaire TEXT,
+      taille INTEGER CHECK (taille >= 0),
+      poids INTEGER CHECK (poids >= 0),
+      lieu_peche TEXT,
+      date_peche TEXT,              -- format YYYY-MM-DD
+      poisson_relache INTEGER DEFAULT 0, -- SQLite: 0/1
+      utilisateur_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(utilisateur_id) REFERENCES users(id)
+    )
+  `);
+
+  // RESERVATIONS
+await run(`
+  CREATE TABLE IF NOT EXISTS reservations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sortie_peche_id INTEGER NOT NULL,
+    utilisateur_id INTEGER NOT NULL,
+    statut TEXT DEFAULT 'confirmee', -- optionnel
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(sortie_peche_id) REFERENCES sorties(id) ON DELETE CASCADE,
+    FOREIGN KEY(utilisateur_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(sortie_peche_id, utilisateur_id) -- empêche double réservation
+  )
+`);
+
+    await ensureColumns("carnets", [
+    { name: "nom_poisson", type: "TEXT" },
+    { name: "url_photo_poisson", type: "TEXT" },
+    { name: "commentaire", type: "TEXT" },
+    { name: "taille", type: "INTEGER" },
+    { name: "poids", type: "INTEGER" },
+    { name: "lieu_peche", type: "TEXT" },
+    { name: "date_peche", type: "TEXT" },
+    { name: "poisson_relache", type: "INTEGER DEFAULT 0" },
+    { name: "utilisateur_id", type: "INTEGER" }
+  ]);
+
 
   console.log("✅ Tables prêtes.");
 
